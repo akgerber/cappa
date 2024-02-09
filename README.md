@@ -13,6 +13,10 @@ Cappa is a declarative command line parsing library, taking much of its
 inspiration from the "Derive" API from the
 [Clap](https://docs.rs/clap/latest/clap/_derive/index.html) written in Rust.
 
+It supports a class oriented (next code block),
+[function based](#function-based-commands), and [hybrid](#hybrid) means of
+defining commands/subcommands.
+
 ```python
 from dataclasses import dataclass, field
 import cappa

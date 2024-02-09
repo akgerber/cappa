@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import dataclasses
+import inspect
 import typing
 
 from rich.theme import Theme
@@ -261,7 +262,7 @@ def command(
     """
 
     def wrapper(_decorated_cls):
-        if not detect(_decorated_cls):
+        if inspect.isclass(_decorated_cls) and not detect(_decorated_cls):
             _decorated_cls = dataclasses.dataclass(_decorated_cls)
 
         instance = Command(

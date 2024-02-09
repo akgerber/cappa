@@ -8,7 +8,7 @@ from enum import Enum
 import typing_inspect
 from typing_extensions import Self, get_args
 
-from cappa.typing import MISSING, get_type_hints, missing
+from cappa.typing import MISSING, find_type_annotation, get_type_hints, missing
 
 if typing.TYPE_CHECKING:
     from cappa import Arg, Subcommand
@@ -160,19 +160,20 @@ class Field:
 
 def fields(cls: type):
     class_type = ClassTypes.from_cls(cls)
+
     if class_type == ClassTypes.dataclass:
         return Field.from_dataclass(cls)
 
-    if class_type == ClassTypes.pydantic_v1:
+    elif class_type == ClassTypes.pydantic_v1:
         return Field.from_pydantic_v1(cls)
 
-    if class_type == ClassTypes.pydantic_v2:
+    elif class_type == ClassTypes.pydantic_v2:
         return Field.from_pydantic_v2(cls)
 
-    if class_type == ClassTypes.pydantic_v2_dataclass:
+    elif class_type == ClassTypes.pydantic_v2_dataclass:
         return Field.from_pydantic_v2_dataclass(cls)
 
-    if class_type == ClassTypes.attrs:
+    elif class_type == ClassTypes.attrs:
         return Field.from_attrs(cls)
 
     raise NotImplementedError()  # pragma: no cover
@@ -201,6 +202,7 @@ def get_command_capable_object(obj):
     the arguments to the dataclass into the original callable.
     """
     if inspect.isfunction(obj):
+        from cappa import Dep
 
         def call(self):
             kwargs = dataclasses.asdict(self)
@@ -208,6 +210,7 @@ def get_command_capable_object(obj):
 
         args = get_type_hints(obj, include_extras=True)
         parameters = inspect.signature(obj).parameters
+
         fields = [
             (
                 name,
@@ -219,6 +222,7 @@ def get_command_capable_object(obj):
                 ),
             )
             for name, annotation in args.items()
+            if name not in "return" and not find_type_annotation(annotation, Dep).obj
         ]
         return dataclasses.make_dataclass(
             obj.__name__,
@@ -226,7 +230,36 @@ def get_command_capable_object(obj):
             namespace={"__call__": call},
         )
 
+    method_subcommands = collect_method_subcommands(obj)
+    if method_subcommands:
+        from cappa.subcommand import Subcommands
+
+        method_commands = [get_command_capable_object(m) for m in method_subcommands]
+        return dataclasses.make_dataclass(
+            obj.__name__ + "Meow",
+            [
+                *((f.name, f.type, f) for f in dataclasses.fields(obj)),
+                (
+                    "cappa_subcommand",
+                    Subcommands[typing.Union[*method_commands] | None],  # type: ignore
+                    dataclasses.field(default=None),
+                ),
+            ],
+            # namespace={"__call__": call},
+        )
+
     return obj
+
+
+def collect_method_subcommands(cls: type) -> list[typing.Callable]:
+    members = inspect.getmembers(cls, inspect.isfunction)
+
+    methods = []
+    for _, method in members:
+        if hasattr(method, "__cappa__"):
+            methods.append(method)
+
+    return methods
 
 
 def get_type(typ):
