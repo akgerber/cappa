@@ -224,6 +224,13 @@ class Command(typing.Generic[T]):
 
         return command.cmd_cls(**kwargs)
 
+    @property
+    def subcommand(self) -> Subcommand | None:
+        try:
+            return next(iter(a for a in self.arguments if isinstance(a, Subcommand)))
+        except StopIteration:
+            return None
+
     def value_arguments(self):
         for arg in self.arguments:
             if isinstance(arg, Arg):
