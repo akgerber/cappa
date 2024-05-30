@@ -6,10 +6,10 @@ import inspect
 import typing
 from enum import Enum
 
-from type_lens import FunctionView, TypeView
+from type_lens import Empty, EmptyType, FunctionView, TypeView
 from typing_extensions import Self
 
-from cappa.typing import MISSING, find_annotations, get_type_hints, missing, T
+from cappa.typing import T, find_annotations, get_type_hints
 
 if typing.TYPE_CHECKING:
     pass
@@ -28,8 +28,8 @@ def detect(cls: type) -> bool:
 class Field:
     name: str
     annotation: type
-    default: typing.Any | MISSING = missing
-    default_factory: typing.Any | MISSING = missing
+    default: typing.Any | EmptyType = Empty
+    default_factory: typing.Any | EmptyType = Empty
     metadata: dict = dataclasses.field(default_factory=dict)
 
 
@@ -42,10 +42,10 @@ class DataclassField(Field):
             field = cls(
                 name=f.name,
                 annotation=f.type,
-                default=f.default if f.default is not dataclasses.MISSING else missing,
+                default=f.default if f.default is not dataclasses.MISSING else Empty,
                 default_factory=f.default_factory
                 if f.default_factory is not dataclasses.MISSING
-                else missing,
+                else Empty,
                 metadata=f.metadata,
             )
             fields.append(field)
@@ -67,8 +67,8 @@ class AttrsField(Field):
             field = cls(
                 name=f.name,
                 annotation=f.type,
-                default=default or missing,
-                default_factory=default_factory or missing,
+                default=default or Empty,
+                default_factory=default_factory or Empty,
                 metadata=f.metadata,
             )
             fields.append(field)
@@ -83,11 +83,11 @@ class MsgspecField(Field):
 
         fields = []
         for f in msgspec.structs.fields(typ):
-            default = f.default if f.default is not msgspec.NODEFAULT else missing
+            default = f.default if f.default is not msgspec.NODEFAULT else Empty
             default_factory = (
                 f.default_factory
                 if f.default_factory is not msgspec.NODEFAULT
-                else missing
+                else Empty
             )
             field = cls(
                 name=f.name,
@@ -113,8 +113,8 @@ class PydanticV1Field(Field):
                 annotation=annotation,
                 default=f.default
                 if f.default.__repr__() != "PydanticUndefined"
-                else missing,
-                default_factory=f.default_factory or missing,
+                else Empty,
+                default_factory=f.default_factory or Empty,
             )
             fields.append(field)
         return fields
@@ -131,8 +131,8 @@ class PydanticV2Field(Field):
                 annotation=f.annotation,
                 default=f.default
                 if f.default.__repr__() != "PydanticUndefined"
-                else missing,
-                default_factory=f.default_factory or missing,
+                else Empty,
+                default_factory=f.default_factory or Empty,
             )
             fields.append(field)
         return fields
@@ -147,8 +147,8 @@ class PydanticV2DataclassField(Field):
             field = cls(
                 name=name,
                 annotation=f.annotation,
-                default=f.default or missing,
-                default_factory=f.default_factory or missing,
+                default=f.default or Empty,
+                default_factory=f.default_factory or Empty,
             )
             fields.append(field)
         return fields

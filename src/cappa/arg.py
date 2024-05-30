@@ -7,7 +7,7 @@ import enum
 import typing
 from collections.abc import Callable
 
-from type_lens import TypeView
+from type_lens import Empty, EmptyType, TypeView
 
 from cappa.annotation import (
     parse_optional,
@@ -17,13 +17,7 @@ from cappa.class_inspect import Field, extract_dataclass_metadata
 from cappa.completion.completers import complete_choices
 from cappa.completion.types import Completion
 from cappa.env import Env
-from cappa.typing import (
-    MISSING,
-    Doc,
-    T,
-    find_annotations,
-    missing,
-)
+from cappa.typing import Doc, T, find_annotations
 
 
 @enum.unique
@@ -119,15 +113,15 @@ class Arg(typing.Generic[T]):
             used as the deprecation message.
     """
 
-    value_name: str | MISSING = missing
+    value_name: str | EmptyType = Empty
     short: bool | str | list[str] | None = False
     long: bool | str | list[str] | None = False
     count: bool = False
-    default: T | None | MISSING = missing
+    default: T | None | EmptyType = Empty
     help: str | None = None
     parse: Callable[[typing.Any], T] | None = None
 
-    group: str | tuple[int, str] | Group | None = None
+    group: str | tuple[int, str] | Group | EmptyType = Empty
 
     hidden: bool = False
     action: ArgAction | Callable | None = None
@@ -135,7 +129,7 @@ class Arg(typing.Generic[T]):
     choices: list[str] | None = None
     completion: Callable[..., list[Completion]] | None = None
     required: bool | None = None
-    field_name: str | MISSING = missing
+    field_name: str | EmptyType = Empty
     deprecated: bool | str = False
 
     annotations: list[type] = dataclasses.field(default_factory=list)
@@ -188,7 +182,7 @@ class Arg(typing.Generic[T]):
         annotation: TypeView | None = None,
         fallback_help: str | None = None,
         action: ArgAction | Callable | None = None,
-        default: typing.Any = missing,
+        default: typing.Any = Empty,
         field_name: str | None = None,
         default_short: bool = False,
         default_long: bool = False,
@@ -198,7 +192,7 @@ class Arg(typing.Generic[T]):
             annotation = TypeView(...)
 
         field_name = typing.cast(str, field_name or self.field_name)
-        default = default if default is not missing else self.default
+        default = default if default is not Empty else self.default
 
         verify_type_compatibility(self, field_name, annotation)
         short = infer_short(self, field_name, default_short)
@@ -295,30 +289,30 @@ def verify_type_compatibility(arg: Arg, field_name: str, annotation: TypeView):
 
 
 def infer_field_name(arg: Arg, field: Field) -> str:
-    if not isinstance(arg.field_name, MISSING):
+    if arg.field_name is not Empty:
         raise ValueError("Arg 'name' cannot be set when using automatic inference.")
 
     return field.name
 
 
 def infer_default(arg: Arg, field: Field, annotation: TypeView) -> typing.Any:
-    if arg.default is not missing:
+    if arg.default is not Empty:
         # Annotated[str, Env('FOO')] = "bar" should produce "bar". I.e. the field default
         # should be used if the `Env` default is not set, but still attempt to read the
         # `Env` if it **is** set.
         if (
             isinstance(arg.default, Env)
             and arg.default.default is None
-            and field.default is not missing
+            and field.default is not Empty
         ):
             return Env(*arg.default.env_vars, default=field.default)
 
         return arg.default
 
-    if field.default is not missing:
+    if field.default is not Empty:
         return field.default
 
-    if field.default_factory is not missing:
+    if field.default_factory is not Empty:
         return field.default_factory()
 
     if annotation.is_optional:
@@ -327,14 +321,14 @@ def infer_default(arg: Arg, field: Field, annotation: TypeView) -> typing.Any:
     if annotation.is_subtype_of(bool):
         return False
 
-    return missing
+    return Empty
 
 
-def infer_required(arg: Arg, annotation: TypeView, default: typing.Any | MISSING):
+def infer_required(arg: Arg, annotation: TypeView, default: typing.Any | EmptyType):
     if arg.required is True:
         return True
 
-    if default is missing:
+    if default is Empty:
         if annotation.is_subtype_of(bool) or annotation.is_optional:
             return False
 
@@ -428,7 +422,7 @@ def infer_action(
 
     # Coerce raw `bool` into flags by default
     if annotation.is_subtype_of(bool):
-        if default is not missing and bool(default):
+        if default is not Empty and bool(default):
             return ArgAction.store_false
 
         return ArgAction.store_true
@@ -578,7 +572,7 @@ def infer_group(
 
 
 def infer_value_name(arg: Arg, field_name: str, num_args: int | None) -> str:
-    if arg.value_name is not missing:
+    if arg.value_name is not Empty:
         return arg.value_name
 
     if num_args == -1:

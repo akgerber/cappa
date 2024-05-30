@@ -7,14 +7,13 @@ import typing
 from collections.abc import Callable
 from types import ModuleType
 
-from type_lens import FunctionView
+from type_lens import Empty, FunctionView
 
 from cappa import class_inspect
 from cappa.arg import Arg, ArgAction, Group
 from cappa.env import Env
 from cappa.output import Exit, Output, prompt_types
 from cappa.subcommand import Subcommand
-from cappa.typing import missing
 
 try:
     import docstring_parser as _docstring_parser
@@ -210,7 +209,7 @@ class Command(typing.Generic[T]):
                 if is_subcommand:
                     continue
 
-                assert arg.default is not missing
+                assert arg.default is not Empty
                 value = arg.default
             else:
                 value = parsed_args[arg.field_name]

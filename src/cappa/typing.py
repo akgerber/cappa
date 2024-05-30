@@ -21,9 +21,6 @@ except ImportError:  # pragma: no cover
 
 T = typing.TypeVar("T")
 
-missing = ...
-MISSING: typing.TypeAlias = type(missing)  # type: ignore
-
 
 def find_annotations(type_view: TypeView, kind: type[T]) -> list[T]:
     if kind is None:
